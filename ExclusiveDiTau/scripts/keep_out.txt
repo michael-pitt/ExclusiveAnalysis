@@ -1,0 +1,24 @@
+# this is a comment
+drop *
+
+#keep event info
+keep run*
+keep event*
+keep luminosityBlock*
+
+#keep nanoAOD content
+keep PV_*
+keep GenProton*
+
+#keep custom variables
+keep nLepCand
+keep LepCand*
+keep nRecoProtCand
+keep ProtCand*
+keep nJets
+keep Lep*
+keep InvMass
+keep Yll
+keep pTll
+keep Acopl
+keep EventNum

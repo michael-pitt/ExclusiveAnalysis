@@ -1,0 +1,17 @@
+# this is a comment
+drop *
+
+#keep event info
+keep run*
+keep event*
+keep luminosityBlock*
+
+#keep objects
+keep MET*
+keep Muon*
+keep Electron*
+keep Jet*
+keep Proton*
+keep PPSLocalTrack*
+keep PV_*
+keep GenProton*
