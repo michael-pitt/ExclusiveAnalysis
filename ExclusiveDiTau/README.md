@@ -38,12 +38,12 @@ json file are stored in [data](https://github.com/michael-pitt/ExclusiveAnalysis
 
 example of running on a file from `SingleMuon` stream
 ```
-python $CMSSW_BASE/src/PhysicsTools/NanoAODTools/scripts/nano_postproc.py \
-output root://cms-xrd-global.cern.ch//store/data/Run2018A/DoubleMuon/NANOAOD/UL2018_MiniAODv2_NanoAODv9-v1/270000/C218937D-A2AC-9949-8E65-D14C50F824AF.root \
+python $CMSSW_BASE/src/PhysicsTools/Tools/scripts/nano_postproc.py \
+output root://cms-xrd-global.cern.ch//store/data/Run2018A/Tau/NANOAOD/UL2018_MiniAODv2_NanoAODv9-v1/130000/0270CB80-87C8-C049-A270-C136A2368CA7.root \
 --json ${CMSSW_BASE}/src/ExclusiveAnalysis/ExclusiveDiTau/data/CMSgolden_2RPGood_anyarms.json \
 --bi $CMSSW_BASE/src/ExclusiveAnalysis/ExclusiveDiTau/scripts/keep_in.txt \
 --bo $CMSSW_BASE/src/ExclusiveAnalysis/ExclusiveDiTau/scripts/keep_out.txt \
--c "HLT_IsoMu24" -I ExclusiveAnalysis.ExclusiveDiTau.DiLep_analysis analysis_mudata
+-c "HLT_DoubleMediumChargedIsoPFTauHPS35_Trk1_eta2p1_Reg" -I ExclusiveAnalysis.ExclusiveDiTau.DiTau_analysis analysis_hadhaddata
 ```
 
 example of running on a MC (`nano.root` can be replaced by any NANOAOD file)

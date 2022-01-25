@@ -8,8 +8,8 @@ from PhysicsTools.NanoAODTools.postprocessing.framework.eventloop import Module
 from PhysicsTools.NanoAODTools.postprocessing.framework.datamodel import Collection
 
 ### Proton selector be replaced by preprocessing module
-from CMSDASTools.Analysis.objectSelector import ProtonSelector
-from CMSDASTools.Analysis.objectSelector import ElectronSelector, MuonSelector
+from ExclusiveAnalysis.ExclusiveDiTau.objectSelector import ProtonSelector
+from ExclusiveAnalysis.ExclusiveDiTau.objectSelector import ElectronSelector, MuonSelector, TauSelector
 
 class Analysis(Module):
     def __init__(self, channel, isMC):
@@ -45,13 +45,7 @@ class Analysis(Module):
         self.out.branch("ProtCand_ismultirp","I",  lenVar = "nRecoProtCand");
         self.out.branch("ProtCand_rpid",     "I",  lenVar = "nRecoProtCand");
         self.out.branch("nJets",             "I");
-        self.out.branch("Lep0Pt",            "F");
-        self.out.branch("Lep1Pt",            "F");
-        self.out.branch("Lep0Eta",           "F");
-        self.out.branch("Lep1Eta",           "F");
-        self.out.branch("Lep0Phi",           "F");
-        self.out.branch("Lep1Phi",           "F");
-        self.out.branch("InvMass",           "F");
+        self.out.branch("VisMass",           "F");
         self.out.branch("Yll",               "F");
         self.out.branch("pTll",              "F");
         self.out.branch("Acopl",             "F");
@@ -87,6 +81,20 @@ class Analysis(Module):
 
         event.selectedMuons.sort(key=lambda x: x.pt, reverse=True)
 
+    def selectTaus(self, event, tauSel):
+        ## access a collection in nanoaod and create a new collection based on this
+
+        event.selectedTaus = []
+        taus = Collection(event, "Tau")
+        for tau in taus:
+            if not tauSel.evalTau(tau): continue
+            setattr(tau, 'id', 15)
+			#add TES for MC
+			#...
+            event.selectedTaus.append(tau)
+
+        event.selectedTaus.sort(key=lambda x: x.pt, reverse=True)
+
 
     def selectAK4Jets(self, event):
         ## Selected jets: pT>30, |eta|<4.7, pass tight ID
@@ -106,7 +114,7 @@ class Analysis(Module):
                 continue
                 
             #check overlap with selected leptons 
-            deltaR_to_leptons=[ j.p4().DeltaR(lep.p4()) for lep in event.selectedMuons+event.selectedElectrons ]
+            deltaR_to_leptons=[ j.p4().DeltaR(lep.p4()) for lep in event.selectedMuons+event.selectedTaus+event.selectedElectrons ]
             hasLepOverlap=sum( [dR<0.4 for dR in deltaR_to_leptons] )
             if hasLepOverlap>0: continue
 
@@ -164,66 +172,68 @@ class Analysis(Module):
         """process event, return True (go to next module) or False (fail, go to next event)"""
         
         #initiate proton selector tools:
-        prSel = ProtonSelector('2018C')
-        elSel = ElectronSelector()
-        muSel = MuonSelector(minPt=20, ID='medium')
+        prSel  = ProtonSelector('2018C')
+        elSel  = ElectronSelector()
+        muSel  = MuonSelector(minPt=30, ID='medium')
+        tauSel = TauSelector(minPt=40)
         
         # apply object selection
         self.selectMuons(event, muSel)
         self.selectElectrons(event, elSel)
+        self.selectTaus(event, tauSel)
         self.selectAK4Jets(event)
         self.selectProtons(event, prSel)
         self.selectGenProtons(event)
-        
-        #apply event selection depending on the channel:
-        if self.channel=="mu":
-
-            # Select events with exactly 2 muons and 0 electrons
-            if len(event.selectedElectrons): return False
-            if not len(event.selectedMuons)==2: return False
-            
-            if event.selectedMuons[0].charge==event.selectedMuons[1].charge: return False
-
-        if self.channel=="el":
-
-            # Select events with exactly 2 electrons and 0 muons
-            if len(event.selectedMuons): return False
-            if not len(event.selectedElectrons)==2: return False
-            
-            if event.selectedElectrons[0].charge==event.selectedElectrons[1].charge: return False
-
-        if self.channel=='emu':
-            nmu=len(event.selectedMuons)
-            nele=len(event.selectedElectrons)
-            if nmu!=1 or nele!=1 : return False
-
-            if event.selectedMuons[0].charge==event.selectedElectrons[0].charge : return False
        
+        #apply event selection depending on the channel:
+        if self.channel=="tautau":
+
+            # Select events with exactly 2 hadronic taus
+            if not len(event.selectedTaus)==2: return False
+            
+            if event.selectedTaus[0].charge==event.selectedTaus[1].charge: return False
+
+        if self.channel=="mutau":
+
+            # Select events with exactly 1 muon and 1 hadronic tau
+            if not len(event.selectedMuons)==1: return False
+            if not len(event.selectedTaus)==1: return False
+            
+            if event.selectedMuons[0].charge==event.selectedTaus[1].charge: return False
+
+        if self.channel=='etau':
+
+            # Select events with exactly 1 electron and 1 hadronic tau
+            if not len(event.selectedElectrons)==1: return False
+            if not len(event.selectedTaus)==1: return False
+            
+            if event.selectedElectrons[0].charge==event.selectedTaus[1].charge: return False
+
         ######################################################
         ##### HIGH LEVEL VARIABLES FOR SELECTED EVENTS   #####
         ######################################################
         
-        event.selectedLeptons=event.selectedElectrons+event.selectedMuons
-        event.selectedLeptons.sort(key=lambda x: x.pt, reverse=True)
-        
-        lep_id     = [lep.id for lep in event.selectedLeptons]
-        lep_pt     = [lep.pt for lep in event.selectedLeptons]
-        lep_eta    = [lep.eta for lep in event.selectedLeptons]
-        lep_phi    = [lep.phi for lep in event.selectedLeptons]
-        lep_charge = [lep.charge for lep in event.selectedLeptons]
-        lep_dxy    = [lep.dxy for lep in event.selectedLeptons]
-        lep_dz     = [lep.dz for lep in event.selectedLeptons]
+        event.selectedAllLeptons=event.selectedElectrons+event.selectedMuons+event.selectedTaus
+        event.selectedAllLeptons.sort(key=lambda x: x.pt, reverse=True)
+ 
+        lep_id     = [lep.id for lep in event.selectedAllLeptons]
+        lep_pt     = [lep.pt for lep in event.selectedAllLeptons]
+        lep_eta    = [lep.eta for lep in event.selectedAllLeptons]
+        lep_phi    = [lep.phi for lep in event.selectedAllLeptons]
+        lep_charge = [lep.charge for lep in event.selectedAllLeptons]
+        lep_dxy    = [lep.dxy for lep in event.selectedAllLeptons]
+        lep_dz     = [lep.dz for lep in event.selectedAllLeptons]
         
 
         #di-lepton 4-vector
         lepSum = ROOT.TLorentzVector()
-        for lep in event.selectedLeptons:
+        for lep in event.selectedAllLeptons:
             lepSum+=lep.p4()
 		
 		# compute acolpanarity
-        lep1 = event.selectedLeptons[0].p4()
-        lep2 = event.selectedLeptons[1].p4()
-        acol = 1.0-lep1.DeltaPhi(lep2)/math.pi
+        lep1 = event.selectedAllLeptons[0].p4()
+        lep2 = event.selectedAllLeptons[1].p4()
+        acol = 1.0-abs(lep1.DeltaPhi(lep2))/math.pi
 	
         #protons
         proton_xi     = [p.xi for p in event.selectedProtons]
@@ -246,7 +256,7 @@ class Analysis(Module):
 	    
         ## store branches
         self.out.fillBranch("EventNum",           int(abs(lep_eta[0])*800000000))
-        self.out.fillBranch("nLepCand",           len(event.selectedLeptons))
+        self.out.fillBranch("nLepCand",           len(event.selectedAllLeptons))
         self.out.fillBranch("LepCand_id" ,        lep_id)
         self.out.fillBranch("LepCand_pt" ,        lep_pt)
         self.out.fillBranch("LepCand_eta" ,       lep_eta)
@@ -263,13 +273,7 @@ class Analysis(Module):
         self.out.fillBranch("ProtCand_arm",       proton_arm)
         self.out.fillBranch("ProtCand_ismultirp", proton_method)
         self.out.fillBranch("nJets" ,             len(event.selectedAK4Jets))
-        self.out.fillBranch("Lep0Pt" ,            lep_pt[0])
-        self.out.fillBranch("Lep1Pt" ,            lep_pt[1])
-        self.out.fillBranch("Lep0Eta" ,           lep_eta[0])
-        self.out.fillBranch("Lep1Eta" ,           lep_eta[1])
-        self.out.fillBranch("Lep0Phi" ,           lep_phi[0])
-        self.out.fillBranch("Lep1Phi" ,           lep_phi[1])
-        self.out.fillBranch("InvMass",            lepSum.M())
+        self.out.fillBranch("VisMass",            lepSum.M())
         self.out.fillBranch("Yll",                lepSum.Rapidity())
         self.out.fillBranch("pTll",               lepSum.Pt())
         self.out.fillBranch("Acopl",              acol)	
@@ -281,10 +285,10 @@ class Analysis(Module):
 
 
 # define modules using the syntax 'name = lambda : constructor' to avoid having them loaded when not needed
-analysis_mumc    = lambda : Analysis(channel="mu", isMC=True)
-analysis_elmc    = lambda : Analysis(channel="el", isMC=True)
-analysis_emumc   = lambda : Analysis(channel="emu",isMC=True)
+analysis_tautau    = lambda : Analysis(channel="tautau", isMC=True)
+analysis_mutau    = lambda : Analysis(channel="mutau", isMC=True)
+analysis_etau    = lambda : Analysis(channel="etau",isMC=True)
 
-analysis_mudata  = lambda : Analysis(channel="mu", isMC=False)
-analysis_eldata  = lambda : Analysis(channel="el", isMC=False)
-analysis_emudata = lambda : Analysis(channel="emu",isMC=False)
+analysis_tautaudata  = lambda : Analysis(channel="tautau", isMC=False)
+analysis_mutaudata  = lambda : Analysis(channel="mutau", isMC=False)
+analysis_etaudata  = lambda : Analysis(channel="etau",isMC=False)

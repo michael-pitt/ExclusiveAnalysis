@@ -9,6 +9,7 @@ keep luminosityBlock*
 #keep objects
 keep MET*
 keep Muon*
+keep Tau*
 keep Electron*
 keep Jet*
 keep Proton*

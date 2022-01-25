@@ -29,6 +29,21 @@ class ElectronSelector(ObjectSelector):
         if not el.mvaFall17V2Iso_WP80: return False
 
         return True
+		
+class TauSelector(ObjectSelector):
+    def __init__(self, minPt = 40):
+        self.minPt = minPt
+
+    def evalTau(self, tau):
+               
+        if tau.pt < self.minPt: return False
+        if abs(tau.eta) > 2.1: return False
+        if abs(tau.dz) > 0.2: return False
+        if tau.decayMode not in [0,1,10,11]: return False
+        if abs(tau.charge)!=1: return False
+        if tau.idDeepTau2017v2p1VSjet<1: return False
+
+        return True		
         
 class MuonSelector(ObjectSelector):
     def __init__(self, minPt = 35, ID = 'tight'):
